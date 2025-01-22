@@ -11,6 +11,7 @@ from autogen_ext.agents.file_surfer import FileSurfer
 from autogen_ext.agents.magentic_one import MagenticOneCoderAgent
 from autogen_ext.agents.web_surfer import MultimodalWebSurfer
 from autogen_ext.code_executors.local import LocalCommandLineCodeExecutor
+from autogen_ext.code_executors.docker import DockerCommandLineCodeExecutor
 from autogen_ext.models.openai._openai_client import BaseOpenAIChatCompletionClient
 
 SyncInputFunc = Callable[[str], str]
@@ -125,6 +126,7 @@ class MagenticOne(MagenticOneGroupChat):
         self,
         client: ChatCompletionClient,
         hil_mode: bool = False,
+        executor_type: str = "local",
         input_func: InputFuncType | None = None,
     ):
         self.client = client
@@ -133,7 +135,14 @@ class MagenticOne(MagenticOneGroupChat):
         fs = FileSurfer("FileSurfer", model_client=client)
         ws = MultimodalWebSurfer("WebSurfer", model_client=client)
         coder = MagenticOneCoderAgent("Coder", model_client=client)
-        executor = CodeExecutorAgent("Executor", code_executor=LocalCommandLineCodeExecutor())
+        if executor_type == "docker":
+            code_executor = DockerCommandLineCodeExecutor()
+        elif executor_type == "local":
+            code_executor = LocalCommandLineCodeExecutor()
+        else:
+            raise ValueError(f"Invalid executor type: {executor_type}. Must be 'docker' or 'local'.")
+        
+        executor = CodeExecutorAgent("Executor", code_executor=code_executor)
         agents: List[ChatAgent] = [fs, ws, coder, executor]
         if hil_mode:
             user_proxy = UserProxyAgent("User", input_func=input_func)
